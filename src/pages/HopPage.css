@@ -1,0 +1,143 @@
+.hop-path {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 0;
+  overflow-x: auto;
+}
+
+.hop-node {
+  background: var(--surface2);
+  border-radius: 12px;
+  padding: 16px 14px 14px;
+  text-align: center;
+  min-width: 130px;
+  border: 1.5px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.hop-node:hover { transform: translateY(-4px); }
+
+.hop-status-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+}
+
+.hop-bar-safe    { background: var(--success); }
+.hop-bar-warning { background: var(--warning); }
+.hop-bar-danger  { background: var(--danger); }
+
+.hop-safe    { border-color: #86efac; }
+.hop-warning { border-color: #fde68a; }
+.hop-danger  { border-color: #fca5a5; background: #fff5f5; }
+
+.hop-img {
+  width: 48px; height: 48px;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+
+.hop-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.hop-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.hop-detail {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.hop-arrow {
+  font-size: 1.2rem;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.arrow-danger { color: var(--danger); }
+
+/* Bottom section */
+.hop-bottom {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.auth-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-item {
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-pass { background: var(--success-light); }
+.auth-warn { background: var(--warning-light); }
+.auth-fail { background: var(--danger-light); }
+
+.ai-icon {
+  font-size: 1.3rem;
+}
+
+.auth-pass .ai-icon { color: var(--success); }
+.auth-warn .ai-icon { color: var(--warning); }
+.auth-fail .ai-icon { color: var(--danger); }
+
+.auth-item div {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-item strong {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.auth-item span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.hop-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+
+@media (max-width: 900px) {
+  .hop-bottom { grid-template-columns: 1fr; }
+  .auth-panel { flex-direction: row; }
+  .auth-item { flex: 1; }
+}
+
+@media (max-width: 600px) {
+  .hop-path { justify-content: center; }
+  .hop-node { min-width: 110px; }
+  .auth-panel { flex-direction: column; }
+}
