@@ -12,19 +12,45 @@ export default function RegisterPage() {
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = e => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
     if (form.password !== form.confirmPassword) {
       alert('Passwords do not match');
       return;
     }
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          confirmPassword: form.confirmPassword,
+          role: form.role
+        })
+      });
+
+      const data = await response.json();
       setLoading(false);
+
+      if (!response.ok) {
+        // Backend sent an error (e.g. email already registered)
+        alert(data.error || 'Registration failed');
+        return;
+      }
+
+      // Success - save role and redirect
       const selectedRole = form.role === 'admin' ? 'organization' : 'individual';
       localStorage.setItem('phishshield_role', selectedRole);
       navigate(selectedRole === 'organization' ? '/admin' : '/dashboard');
-    }, 1200);
+
+    } catch (err) {
+      setLoading(false);
+      alert('Could not connect to server. Is the backend running?');
+    }
   };
 
   return (

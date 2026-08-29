@@ -9,17 +9,44 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
-
-  const handleSubmit = e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+
+    try {
+      const response = await fetch('http://127.0.0.1:5000/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password
+        })
+      });
+
+      const data = await response.json();
       setLoading(false);
-      const selectedRole = form.role === 'admin' ? 'organization' : 'individual';
+
+      if (!response.ok) {
+        alert(data.error || 'Login failed');
+        return;
+      }
+
+      const selectedRole = (data.user.role === 'organization' || data.user.role === 'admin') ? 'organization' : 'individual';
       localStorage.setItem('phishshield_role', selectedRole);
-      if (selectedRole === 'organization') navigate('/admin');
-      else navigate('/dashboard');
-    }, 1200);
+      localStorage.setItem('phishshield_name', data.user.name);
+      localStorage.setItem('phishshield_email', data.user.email);
+      localStorage.setItem('phishshield_token', data.token);
+
+      if (selectedRole === 'organization') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+
+    } catch (err) {
+      setLoading(false);
+      alert('Could not connect to server. Is the backend running?');
+    }
   };
 
   return (

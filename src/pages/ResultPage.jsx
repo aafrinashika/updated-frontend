@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import './ResultPage.css';
 
@@ -25,6 +25,8 @@ const mockResult = {
 
 export default function ResultPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const result = location.state || mockResult;
   const [animScore, setAnimScore] = useState(0);
 
   useEffect(() => {
@@ -32,8 +34,8 @@ export default function ResultPage() {
       let current = 0;
       const interval = setInterval(() => {
         current += 2;
-        if (current >= mockResult.riskScore) {
-          setAnimScore(mockResult.riskScore);
+        if (current >= result.riskScore) {
+          setAnimScore(result.riskScore);
           clearInterval(interval);
         } else {
           setAnimScore(current);
@@ -42,9 +44,9 @@ export default function ResultPage() {
       return () => clearInterval(interval);
     }, 300);
     return () => clearTimeout(timer);
-  }, []);
+  }, [result.riskScore]);
 
-  const isPhishing = mockResult.verdict === 'phishing';
+  const isPhishing = result.verdict === 'phishing';
   const authBadge = (val) => {
     const pass = val === 'PASS';
     return (
@@ -112,7 +114,7 @@ export default function ResultPage() {
             </div>
             <div className="conf-row">
               <span>ML Confidence:</span>
-              <strong>{mockResult.confidence}%</strong>
+              <strong>{result.confidence}%</strong>
             </div>
           </div>
         </div>
@@ -125,15 +127,15 @@ export default function ResultPage() {
               <tbody>
                 <tr>
                   <td className="auth-label">SPF</td>
-                  <td>{authBadge(mockResult.spf)}</td>
+                  <td>{authBadge(result.spf)}</td>
                 </tr>
                 <tr>
                   <td className="auth-label">DKIM</td>
-                  <td>{authBadge(mockResult.dkim)}</td>
+                  <td>{authBadge(result.dkim)}</td>
                 </tr>
                 <tr>
                   <td className="auth-label">DMARC</td>
-                  <td>{authBadge(mockResult.dmarc)}</td>
+                  <td>{authBadge(result.dmarc)}</td>
                 </tr>
               </tbody>
             </table>
@@ -146,15 +148,15 @@ export default function ResultPage() {
           <div className="card-body detail-list">
             <div className="detail-row">
               <span className="detail-label">Sender</span>
-              <span className="detail-val mono">{mockResult.sender}</span>
+              <span className="detail-val mono">{result.sender}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Subject</span>
-              <span className="detail-val">{mockResult.subject}</span>
+              <span className="detail-val">{result.subject}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">From IP</span>
-              <span className="detail-val mono">{mockResult.fromIp}</span>
+              <span className="detail-val mono">{result.fromIp}</span>
             </div>
             <div className="detail-row">
               <span className="detail-label">Verdict</span>
@@ -172,7 +174,7 @@ export default function ResultPage() {
           </div>
           <div className="card-body">
             <ul className="reason-list">
-              {mockResult.reasons.map((r, i) => (
+              {result.reasons.map((r, i) => (
                 <li key={i} className="reason-item">
                   <i className="fas fa-exclamation-circle reason-icon"></i>
                   {r}

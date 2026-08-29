@@ -31,16 +31,39 @@ export default function UploadPage() {
       reader.readAsText(f);
     }
   };
-
-  const handleAnalyze = (e) => {
+  const handleAnalyze = async (e) => {
     e.preventDefault();
     if (!headerText.trim()) return;
     setAnalyzing(true);
-    setTimeout(() => {
+
+    try {
+            const token = localStorage.getItem('phishshield_token');
+
+      const response = await fetch('http://127.0.0.1:5000/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ header_text: headerText })
+      });
+
+      const data = await response.json();
       setAnalyzing(false);
-      navigate('/result');
-    }, 2000);
+
+      if (!response.ok) {
+        alert(data.error || 'Analysis failed');
+        return;
+      }
+
+      navigate('/result', { state: data });
+
+    } catch (err) {
+      setAnalyzing(false);
+      alert('Could not connect to server. Is the backend running?');
+    }
   };
+  
 
   return (
     <Sidebar>
