@@ -63,3 +63,68 @@
 @media (max-width: 900px) {
   .reports-bottom { grid-template-columns: 1fr; }
 }
+/* --- Print view -------------------------------------------------------- */
+/* .print-only is hidden on screen; only it (and nothing else in the app -
+   sidebar, topbar, footer, page nav, export/report widgets) shows when
+   printing. Plain monospace layout, no colors/icons/badges. */
+.print-only { display: none; }
+
+@media print {
+  .sidebar,
+  .app-topbar,
+  .app-footer,
+  .screen-only {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+    font-family: 'Courier New', Courier, monospace;
+    color: #000;
+    padding: 0;
+  }
+
+  .print-only h1 {
+    font-size: 1.4rem;
+    letter-spacing: 2px;
+    margin: 0 0 2px 0;
+  }
+
+  .print-only h2 {
+    font-size: 1.05rem;
+    font-weight: 400;
+    margin: 0 0 10px 0;
+  }
+
+  .print-generated {
+    font-size: 0.85rem;
+    margin: 0 0 20px 0;
+  }
+
+  .print-only h3 {
+    font-size: 0.95rem;
+    margin: 18px 0 4px 0;
+  }
+
+  .print-only hr {
+    border: none;
+    border-top: 1px solid #000;
+    margin: 0 0 8px 0;
+  }
+
+  .print-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .print-table td, .print-table th {
+    padding: 2px 12px 2px 0;
+    text-align: left;
+  }
+
+  .print-monthly th {
+    border-bottom: 1px solid #000;
+    font-weight: 700;
+  }
+}
