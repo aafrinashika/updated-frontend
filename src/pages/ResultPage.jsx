@@ -187,7 +187,10 @@ export default function ResultPage() {
 
       {/* Actions */}
       <div className="result-actions animate-in">
-        <button className="btn btn-primary" onClick={() => navigate('/hop')}>
+        <button
+          className="btn btn-primary"
+          onClick={() => result.scanId ? navigate(`/hop/${result.scanId}`) : alert('No scan ID found for this result.')}
+        >
           <i className="fas fa-project-diagram"></i> View Hop Visualization
         </button>
         <button className="btn btn-outline" onClick={() => navigate('/upload')}>

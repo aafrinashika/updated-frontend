@@ -1,52 +1,7 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import './HopPage.css';
-
-const hops = [
-  {
-    icon: 'https://img.icons8.com/color/96/gmail-new.png',
-    label: 'Sender',
-    value: 'abc@gmail.com',
-    status: 'safe',
-    detail: 'Origin point',
-  },
-  {
-    icon: 'https://img.icons8.com/color/96/server.png',
-    label: 'SMTP Server',
-    value: 'smtp.gmail.com',
-    status: 'safe',
-    detail: 'Authorized sender',
-  },
-  {
-    icon: 'https://img.icons8.com/color/96/cloud.png',
-    label: 'Relay Server',
-    value: 'mail.relay.net',
-    status: 'warning',
-    detail: 'Third-party relay',
-  },
-  {
-    icon: 'https://img.icons8.com/color/96/hacker.png',
-    label: 'Suspicious Server',
-    value: 'unknown.host.xyz',
-    status: 'danger',
-    detail: '⚠ Unverified host',
-  },
-  {
-    icon: 'https://img.icons8.com/color/96/laptop.png',
-    label: 'Recipient',
-    value: 'deepika@company.com',
-    status: 'safe',
-    detail: 'Delivered',
-  },
-];
-
-const hopTable = [
-  { hop: 1, server: 'smtp.gmail.com',        delay: '0ms',   status: 'safe' },
-  { hop: 2, server: 'mail.relay.net',         delay: '120ms', status: 'warning' },
-  { hop: 3, server: 'unknown.host.xyz',       delay: '840ms', status: 'danger' },
-  { hop: 4, server: 'Recipient Mail Server',  delay: '55ms',  status: 'safe' },
-];
 
 const statusMap = {
   safe:    { cls: 'badge-safe',    label: 'Safe' },
@@ -54,8 +9,119 @@ const statusMap = {
   danger:  { cls: 'badge-danger',  label: 'Malicious' },
 };
 
+const statusIcon = {
+  safe: 'https://img.icons8.com/color/96/server.png',
+  warning: 'https://img.icons8.com/color/96/cloud.png',
+  danger: 'https://img.icons8.com/color/96/hacker.png',
+};
+
+const statusDetail = {
+  safe: 'Authorized server',
+  danger: '⚠ Unverified host',
+};
+
+// Distinguishes "no real domain to check" from "real domain we can't vouch for"
+// for hops classified as 'warning', so the UI doesn't call an internal
+// routing address a "third-party relay" when it isn't one.
+const getHopDetail = (hop) => {
+  if (hop.status === 'safe') return statusDetail.safe;
+  if (hop.status === 'danger') return statusDetail.danger;
+
+  const looksLikeDomain = /^[\w.-]+\.[a-zA-Z]{2,}(\s\[.*\])?$/.test(hop.server);
+  return looksLikeDomain ? 'Untrusted relay' : 'Unverifiable routing address';
+};
+
 export default function HopPage() {
+  const { scanId } = useParams();
   const navigate = useNavigate();
+
+  const [scan, setScan] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchScan = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const token = localStorage.getItem('phishshield_token');
+        const res = await fetch(`http://localhost:5000/api/scans/${scanId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || 'Could not load scan');
+        }
+
+        setScan(await res.json());
+      } catch (err) {
+        setError(err.message || 'Something went wrong');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (scanId) fetchScan();
+  }, [scanId]);
+
+  if (loading) {
+    return (
+      <Sidebar>
+        <div className="page-header"><h1>Email Hop Visualization</h1></div>
+        <p>Loading hop data…</p>
+      </Sidebar>
+    );
+  }
+
+  if (error) {
+    return (
+      <Sidebar>
+        <div className="page-header"><h1>Email Hop Visualization</h1></div>
+        <p style={{ color: '#e02424' }}>{error}</p>
+        <button className="btn btn-outline" onClick={() => navigate('/history')}>
+          <i className="fas fa-history"></i> Back to History
+        </button>
+      </Sidebar>
+    );
+  }
+
+  const analysis = scan?.analysis_result || {};
+  const rawHops = analysis.hops || [];
+  const hasDanger = rawHops.some(h => h.status === 'danger');
+
+  // Visual path: Sender -> each real hop -> Recipient
+  const hops = [
+    {
+      icon: 'https://img.icons8.com/color/96/gmail-new.png',
+      label: 'Sender',
+      value: analysis.sender || 'Unknown sender',
+      status: 'safe',
+      detail: 'Origin point',
+    },
+    ...rawHops.map((hop, i) => ({
+      icon: statusIcon[hop.status] || statusIcon.warning,
+      label: i === rawHops.length - 1 ? 'Recipient Server' : `Hop ${i + 1}`,
+      value: hop.server,
+      status: hop.status,
+      detail: getHopDetail(hop),
+    })),
+    {
+      icon: 'https://img.icons8.com/color/96/laptop.png',
+      label: 'Recipient',
+      value: scan?.user_email || 'You',
+      status: 'safe',
+      detail: 'Delivered',
+    },
+  ];
+
+  // Table: one row per real hop, delay relative to previous hop
+  const hopTable = rawHops.map((hop, i) => ({
+    hop: i + 1,
+    server: hop.server,
+    delay: i === 0 ? '0ms' : `${hop.delayMs}ms`,
+    status: hop.status,
+  }));
 
   return (
     <Sidebar>
@@ -68,7 +134,7 @@ export default function HopPage() {
       <div className="card animate-in">
         <div className="card-header">
           <h3><i className="fas fa-route" style={{marginRight:8,color:'var(--primary)'}}></i>Email Route</h3>
-          <span className="badge badge-danger">Suspicious Path Detected</span>
+          {hasDanger && <span className="badge badge-danger">Suspicious Path Detected</span>}
         </div>
         <div className="card-body">
           <div className="hop-path">
@@ -108,18 +174,22 @@ export default function HopPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {hopTable.map((row, i) => (
-                    <tr key={i}>
-                      <td><strong>#{row.hop}</strong></td>
-                      <td><span className="mono">{row.server}</span></td>
-                      <td style={{color:'var(--text-muted)'}}>{row.delay}</td>
-                      <td>
-                        <span className={`badge ${statusMap[row.status].cls}`}>
-                          {statusMap[row.status].label}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {hopTable.length === 0 ? (
+                    <tr><td colSpan={4}>No hop data found for this scan.</td></tr>
+                  ) : (
+                    hopTable.map((row, i) => (
+                      <tr key={i}>
+                        <td><strong>#{row.hop}</strong></td>
+                        <td><span className="mono">{row.server}</span></td>
+                        <td style={{color:'var(--text-muted)'}}>{row.delay}</td>
+                        <td>
+                          <span className={`badge ${statusMap[row.status].cls}`}>
+                            {statusMap[row.status].label}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -127,25 +197,25 @@ export default function HopPage() {
         </div>
 
         <div className="auth-panel">
-          <div className="auth-item auth-pass">
-            <i className="fas fa-check-circle ai-icon"></i>
+          <div className={`auth-item ${analysis.spf === 'PASS' ? 'auth-pass' : 'auth-fail'}`}>
+            <i className={`fas fa-${analysis.spf === 'PASS' ? 'check' : 'times'}-circle ai-icon`}></i>
             <div>
               <strong>SPF</strong>
-              <span>PASS</span>
+              <span>{analysis.spf}</span>
             </div>
           </div>
-          <div className="auth-item auth-warn">
-            <i className="fas fa-exclamation-circle ai-icon"></i>
+          <div className={`auth-item ${analysis.dkim === 'PASS' ? 'auth-pass' : 'auth-fail'}`}>
+            <i className={`fas fa-${analysis.dkim === 'PASS' ? 'check' : 'times'}-circle ai-icon`}></i>
             <div>
               <strong>DKIM</strong>
-              <span>PASS (weak)</span>
+              <span>{analysis.dkim}</span>
             </div>
           </div>
-          <div className="auth-item auth-fail">
-            <i className="fas fa-times-circle ai-icon"></i>
+          <div className={`auth-item ${analysis.dmarc === 'PASS' ? 'auth-pass' : 'auth-fail'}`}>
+            <i className={`fas fa-${analysis.dmarc === 'PASS' ? 'check' : 'times'}-circle ai-icon`}></i>
             <div>
               <strong>DMARC</strong>
-              <span>FAIL</span>
+              <span>{analysis.dmarc}</span>
             </div>
           </div>
         </div>

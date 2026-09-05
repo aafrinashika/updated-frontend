@@ -36,7 +36,7 @@ export default function App() {
         <Route path="/dashboard" element={<ProtectedRoute role="individual"><DashboardPage /></ProtectedRoute>} />
         <Route path="/upload" element={<ProtectedRoute role="individual"><UploadPage /></ProtectedRoute>} />
         <Route path="/result" element={<ProtectedRoute role="individual"><ResultPage /></ProtectedRoute>} />
-        <Route path="/hop" element={<ProtectedRoute role="individual"><HopPage /></ProtectedRoute>} />
+        <Route path="/hop/:scanId" element={<ProtectedRoute role="individual"><HopPage /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute role="individual"><HistoryPage /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute role="individual"><ReportsPage /></ProtectedRoute>} />
 
