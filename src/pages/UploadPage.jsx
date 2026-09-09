@@ -56,6 +56,17 @@ export default function UploadPage() {
         return;
       }
 
+      // Cache the real result so ResultPage can recover it on refresh or
+      // browser back/forward navigation, where React Router's in-memory
+      // `state` is unavailable. This is the actual API response — never
+      // mock data — and is overwritten by every new analysis.
+      try {
+        sessionStorage.setItem('phishshield_last_result', JSON.stringify(data));
+      } catch (storageErr) {
+        // Non-fatal: if storage is unavailable/full, navigation still works
+        // via location.state for this immediate transition.
+      }
+
       navigate('/result', { state: data });
 
     } catch (err) {
