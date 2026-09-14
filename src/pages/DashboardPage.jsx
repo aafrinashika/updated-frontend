@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import './DashboardPage.css';
 
+// Static UI config for the quick-action cards — labels/routes, not analysis
+// data, so these stay as-is.
 const quickActions = [
   {
     icon: 'fa-upload',
@@ -30,28 +32,64 @@ const quickActions = [
   },
 ];
 
-const recentScans = [
-  { sender: 'support@gmail.com',          date: '08 Aug 2026', risk: 8,  status: 'safe' },
-  { sender: 'security@paypal-login.xyz',  date: '07 Aug 2026', risk: 95, status: 'phishing' },
-  { sender: 'notification@amazon.in',     date: '07 Aug 2026', risk: 48, status: 'warning' },
-  { sender: 'bank@canarabank.com',        date: '06 Aug 2026', risk: 5,  status: 'safe' },
-  { sender: 'verify@microsoft-login.net', date: '05 Aug 2026', risk: 88, status: 'phishing' },
-];
-
 export default function DashboardPage() {
   const navigate = useNavigate();
 
-  const statusBadge = (status) => {
-    const map = {
-      safe: ['badge-safe', 'Safe'],
-      phishing: ['badge-danger', 'Phishing'],
-      warning: ['badge-warning', 'Medium Risk'],
-    };
-    const [cls, label] = map[status];
-    return <span className={`badge ${cls}`}>{label}</span>;
+  const [stats, setStats] = useState(null);
+  const [recentScans, setRecentScans] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadDashboard() {
+      const token = localStorage.getItem('phishshield_token');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      try {
+        const [reportsRes, historyRes] = await Promise.all([
+          fetch('http://127.0.0.1:5000/api/scans/reports', { headers }),
+          fetch('http://127.0.0.1:5000/api/scans/history', { headers }),
+        ]);
+
+        const reportsData = await reportsRes.json();
+        const historyData = await historyRes.json();
+
+        if (cancelled) return;
+
+        if (!reportsRes.ok) {
+          throw new Error(reportsData.error || 'Could not load report stats');
+        }
+        if (!historyRes.ok) {
+          throw new Error(historyData.error || 'Could not load scan history');
+        }
+
+        setStats(reportsData);
+        // Backend already returns scans sorted newest-first.
+        setRecentScans((historyData.scans || []).slice(0, 5));
+      } catch (err) {
+        if (!cancelled) setError(err.message || 'Could not connect to server');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadDashboard();
+    return () => { cancelled = true; };
+  }, []);
+
+  const statusBadge = (verdict) => {
+    if (verdict === 'phishing') return <span className="badge badge-danger">Phishing</span>;
+    if (verdict === 'safe') return <span className="badge badge-safe">Safe</span>;
+    return <span className="badge">{verdict || 'Unknown'}</span>;
   };
 
   const riskColor = (r) => r >= 70 ? '#e02424' : r >= 40 ? '#c27803' : '#057a55';
+
+  const viewScan = (scan) => {
+    navigate('/result', { state: { ...scan.analysis_result, scanId: scan.id } });
+  };
 
   return (
     <Sidebar>
@@ -64,19 +102,31 @@ export default function DashboardPage() {
       <div className="stat-grid">
         <div className="stat-card animate-in">
           <div className="stat-icon blue"><i className="fas fa-envelope"></i></div>
-          <div className="stat-info"><h3>1,250</h3><p>Total Scans</p></div>
+          <div className="stat-info">
+            <h3>{stats ? stats.totalScans : (loading ? '…' : '—')}</h3>
+            <p>Total Scans</p>
+          </div>
         </div>
         <div className="stat-card animate-in" style={{animationDelay:'0.05s'}}>
           <div className="stat-icon green"><i className="fas fa-check-circle"></i></div>
-          <div className="stat-info"><h3>1,085</h3><p>Safe Emails</p></div>
+          <div className="stat-info">
+            <h3>{stats ? stats.safeScans : (loading ? '…' : '—')}</h3>
+            <p>Safe Emails</p>
+          </div>
         </div>
         <div className="stat-card animate-in" style={{animationDelay:'0.1s'}}>
           <div className="stat-icon red"><i className="fas fa-shield-virus"></i></div>
-          <div className="stat-info"><h3>165</h3><p>Phishing Blocked</p></div>
+          <div className="stat-info">
+            <h3>{stats ? stats.phishingScans : (loading ? '…' : '—')}</h3>
+            <p>Phishing Blocked</p>
+          </div>
         </div>
         <div className="stat-card animate-in" style={{animationDelay:'0.15s'}}>
           <div className="stat-icon yellow"><i className="fas fa-percentage"></i></div>
-          <div className="stat-info"><h3>96%</h3><p>Detection Accuracy</p></div>
+          <div className="stat-info">
+            <h3>{stats ? `${stats.averageRiskScore}%` : (loading ? '…' : '—')}</h3>
+            <p>Average Risk Score</p>
+          </div>
         </div>
       </div>
 
@@ -114,36 +164,68 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {recentScans.map((scan, i) => (
-                <tr key={i}>
-                  <td>
-                    <span className="sender-cell">
-                      <i className="fas fa-envelope-open" style={{color:'#94a3b8', marginRight:8}}></i>
-                      {scan.sender}
-                    </span>
-                  </td>
-                  <td style={{color:'var(--text-muted)'}}>{scan.date}</td>
-                  <td>
-                    <div className="risk-inline">
-                      <div className="risk-bar-bg">
-                        <div className="risk-bar-fill" style={{
-                          width: `${scan.risk}%`,
-                          background: riskColor(scan.risk)
-                        }}></div>
-                      </div>
-                      <span style={{color: riskColor(scan.risk), fontWeight: 700}}>
-                        {scan.risk}%
-                      </span>
-                    </div>
-                  </td>
-                  <td>{statusBadge(scan.status)}</td>
-                  <td>
-                    <button className="btn btn-primary btn-sm" onClick={() => navigate('/result')}>
-                      View
-                    </button>
+              {loading && (
+                <tr>
+                  <td colSpan={5} style={{textAlign:'center', padding:'2rem', color:'var(--text-muted)'}}>
+                    <i className="fas fa-spinner fa-spin"></i> Loading recent scans...
                   </td>
                 </tr>
-              ))}
+              )}
+
+              {!loading && error && (
+                <tr>
+                  <td colSpan={5} style={{textAlign:'center', padding:'2rem', color:'#e02424'}}>
+                    <i className="fas fa-exclamation-circle"></i> {error}
+                  </td>
+                </tr>
+              )}
+
+              {!loading && !error && recentScans && recentScans.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{textAlign:'center', padding:'2rem', color:'var(--text-muted)'}}>
+                    No scans yet — analyze your first email header to see it here.
+                  </td>
+                </tr>
+              )}
+
+              {!loading && !error && recentScans && recentScans.map((scan) => {
+                const risk = scan.risk_score ?? 0;
+                const sender = scan.analysis_result?.sender || 'Unknown';
+                const date = scan.timestamp
+                  ? new Date(scan.timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                  : '—';
+
+                return (
+                  <tr key={scan.id}>
+                    <td>
+                      <span className="sender-cell">
+                        <i className="fas fa-envelope-open" style={{color:'#94a3b8', marginRight:8}}></i>
+                        {sender}
+                      </span>
+                    </td>
+                    <td style={{color:'var(--text-muted)'}}>{date}</td>
+                    <td>
+                      <div className="risk-inline">
+                        <div className="risk-bar-bg">
+                          <div className="risk-bar-fill" style={{
+                            width: `${risk}%`,
+                            background: riskColor(risk)
+                          }}></div>
+                        </div>
+                        <span style={{color: riskColor(risk), fontWeight: 700}}>
+                          {risk}%
+                        </span>
+                      </div>
+                    </td>
+                    <td>{statusBadge(scan.verdict)}</td>
+                    <td>
+                      <button className="btn btn-primary btn-sm" onClick={() => viewScan(scan)}>
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
